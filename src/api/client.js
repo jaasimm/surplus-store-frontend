@@ -44,19 +44,32 @@ export const setRefreshPossible = (value) => {
   refreshPossible = Boolean(value);
 };
 
-/** Make sure the CSRF cookie exists before the very first mutating request. */
+let inMemoryCsrf = null;
+
+/** Make sure the CSRF token exists before mutating requests. */
 async function ensureCsrf() {
-  if (readCookie(COOKIE_NAME)) return;
-  csrfBootstrap = csrfBootstrap || api.get('/auth/csrf').catch(() => null);
-  await csrfBootstrap;
+  if (inMemoryCsrf || readCookie(COOKIE_NAME)) return inMemoryCsrf || readCookie(COOKIE_NAME);
+  if (!csrfBootstrap) {
+    csrfBootstrap = api
+      .get('/auth/csrf')
+      .then((res) => {
+        inMemoryCsrf = res?.data?.data?.csrfToken || null;
+        return inMemoryCsrf;
+      })
+      .catch(() => null);
+  }
+  const token = await csrfBootstrap;
   csrfBootstrap = null;
+  return token || inMemoryCsrf || readCookie(COOKIE_NAME);
 }
 
 api.interceptors.request.use(async (config) => {
   const method = (config.method || 'get').toLowerCase();
-  if (!['get', 'head', 'options'].includes(method)) await ensureCsrf();
+  let csrf = inMemoryCsrf || readCookie(COOKIE_NAME);
+  if (!['get', 'head', 'options'].includes(method) && !csrf) {
+    csrf = await ensureCsrf();
+  }
 
-  const csrf = readCookie(COOKIE_NAME);
   if (csrf) config.headers['X-CSRF-Token'] = csrf;
   config.headers['X-Guest-ID'] = getGuestId();
   return config;
