@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, PackageSearch } from 'lucide-react';
+import { ChevronRight, PackageSearch, Truck } from 'lucide-react';
 import { PageLoader, ErrorNote } from '../../components/Feedback';
 import LazyImage from '../../components/LazyImage';
 import api, { errMsg } from '../../api/client';
@@ -132,6 +132,16 @@ export default function Orders() {
                   <span className="rounded-full bg-ink-100 px-3 py-2 text-xs font-semibold text-ink-700">
                     Return {order.returnRequest.status}
                   </span>
+                )}
+                {order.shipment?.trackingUrl && (
+                  <a
+                    href={order.shipment.trackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-outline inline-flex items-center gap-1.5 py-2 text-xs text-blue-700 hover:border-blue-300 hover:bg-blue-50"
+                  >
+                    <Truck className="h-3.5 w-3.5" /> Track package
+                  </a>
                 )}
                 <Link to={`/account/orders/${order.id}`} className="btn-ghost py-2 text-xs">
                   View details <ChevronRight className="h-3.5 w-3.5" />

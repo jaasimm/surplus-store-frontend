@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { ButtonSpinner, ErrorNote } from './Feedback';
 import { cx } from '../utils/format';
+import { isFirebaseConfigured, setupRecaptcha, sendFirebaseOtp } from '../utils/firebase';
 
 const COUNTRY_CODES = ['+91', '+1', '+44', '+61', '+971', '+65'];
 
@@ -12,6 +13,10 @@ const COUNTRY_CODES = ['+91', '+1', '+44', '+61', '+971', '+65'];
  * Step 1 → enter number (country code defaults to +91) and request an OTP.
  * Step 2 → enter the 6-digit code (5 min expiry, resend after 30 s).
  * The account is created automatically for new numbers.
+ *
+ * OTP delivery:
+ *  - Firebase Phone Auth (when VITE_FIREBASE_API_KEY is set): real SMS via Google.
+ *  - Server-side console fallback (dev): OTP is printed to the server log.
  */
 export default function AuthModal() {
   const { authOpen, authReason, closeAuth, sendOtp, verifyOtp, onAuthSuccess } = useAuth();
@@ -26,6 +31,8 @@ export default function AuthModal() {
   const [cooldown, setCooldown] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  /** Holds the Firebase ConfirmationResult when using Firebase Phone Auth. */
+  const [confirmationResult, setConfirmationResult] = useState(null);
   const otpRef = useRef(null);
 
   /* reset when the modal opens */
@@ -35,6 +42,14 @@ export default function AuthModal() {
       setOtp('');
       setError('');
       setCooldown(0);
+      setConfirmationResult(null);
+      // Pre-render the invisible reCAPTCHA. The container div lives in
+      // index.html (outside React) so it is always present in the DOM.
+      if (isFirebaseConfigured()) {
+        setupRecaptcha('recaptcha-container').catch((err) => {
+          console.warn('[auth] reCAPTCHA pre-render failed:', err.message);
+        });
+      }
     }
   }, [authOpen]);
 
@@ -53,35 +68,73 @@ export default function AuthModal() {
 
   const fullMobile = `${cc}${mobile.replace(/^0/, '')}`;
 
+  /* ------------------------------------------------------------------ handleSend */
   const handleSend = async (e) => {
     e?.preventDefault();
     setError('');
     if (!/^\d{8,12}$/.test(mobile)) return setError('Enter a valid mobile number');
     setLoading(true);
     try {
-      const data = await sendOtp(fullMobile);
-      setDevOtp(data?.devOtp || '');
-      setCooldown(data?.resendSeconds || 30);
-      setStep('otp');
+      if (isFirebaseConfigured()) {
+        // ── Firebase path: OTP delivered by Google SMS ──
+        const result = await sendFirebaseOtp(fullMobile, window.recaptchaVerifier);
+        setConfirmationResult(result);
+        setCooldown(30);
+        setStep('otp');
+      } else {
+        // ── Server / console fallback (dev only) ──
+        const data = await sendOtp(fullMobile);
+        setDevOtp(data?.devOtp || '');
+        setCooldown(data?.resendSeconds || 30);
+        setStep('otp');
+      }
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Could not send OTP');
+      console.error('[auth] send error:', err);
+      // Surface friendly Firebase error codes when present
+      const code = err?.code || '';
+      if (code === 'auth/invalid-phone-number') {
+        setError('Invalid phone number. Use format: 9876543210 (without country code).');
+      } else if (code === 'auth/too-many-requests') {
+        setError('Too many OTP requests. Please wait a few minutes and try again.');
+      } else {
+        setError(err?.response?.data?.message || err?.message || 'Could not send OTP');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  /* ---------------------------------------------------------------- handleVerify */
   const handleVerify = async (e) => {
     e?.preventDefault();
     setError('');
     if (!/^\d{6}$/.test(otp)) return setError('Enter the 6-digit OTP');
     setLoading(true);
     try {
-      const data = await verifyOtp({ mobile: fullMobile, otp, name: name.trim() || undefined });
-      await refresh(); // server has merged the guest cart into the account
+      if (confirmationResult) {
+        // ── Firebase path: confirm OTP with Firebase, then exchange for session ──
+        const credential = await confirmationResult.confirm(otp);
+        const idToken = await credential.user.getIdToken();
+        await verifyOtp({ idToken, name: name.trim() || undefined });
+      } else {
+        // ── Server / console fallback ──
+        await verifyOtp({ mobile: fullMobile, otp, name: name.trim() || undefined });
+      }
+      await refresh(); // merge guest cart into user account
       closeAuth();
-      onAuthSuccess?.(data?.data?.user);
+      onAuthSuccess?.();
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Verification failed');
+      console.error('[auth] verify error:', err);
+      const code = err?.code || '';
+      if (code === 'auth/invalid-verification-code') {
+        setError('Incorrect OTP. Please check the code and try again.');
+      } else if (code === 'auth/code-expired') {
+        setError('OTP has expired. Please request a new one.');
+        setStep('phone');
+        setConfirmationResult(null);
+      } else {
+        setError(err?.response?.data?.message || err?.message || 'Verification failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -100,6 +153,8 @@ export default function AuthModal() {
         <button onClick={closeAuth} aria-label="Close" className="absolute right-4 top-4 p-1 text-ink-400 hover:text-ink-700">
           <X className="h-5 w-5" />
         </button>
+
+        {/* Invisible reCAPTCHA anchor is in index.html (outside React) */}
 
         <div className="px-6 pb-8 pt-8 sm:px-8">
           <div className="mb-5 flex items-center gap-3">

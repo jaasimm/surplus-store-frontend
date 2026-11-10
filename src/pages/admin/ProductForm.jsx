@@ -5,6 +5,7 @@ import { PageLoader, ErrorNote, ButtonSpinner } from '../../components/Feedback'
 import api, { errMsg } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { inr, cx } from '../../utils/format';
+import { resolveImgSrc } from '../../utils/img';
 
 const EMPTY = {
   title: '',
@@ -290,7 +291,7 @@ export default function ProductForm() {
           <div className="mt-3 flex flex-wrap gap-3">
             {form.images.map((img, idx) => (
               <div key={idx} className="group relative w-24 overflow-hidden rounded-xl border border-ink-200">
-                <img src={img.url} alt={img.alt || `Product ${idx + 1}`} className="aspect-[4/5] w-full object-cover" />
+                <img src={resolveImgSrc(img.url)} alt={img.alt || `Product ${idx + 1}`} className="aspect-[4/5] w-full object-cover" />
                 {idx === 0 && <span className="absolute left-1 top-1 rounded bg-ink-900 px-1.5 py-0.5 text-[9px] font-bold text-sand-50">COVER</span>}
                 <button
                   type="button"

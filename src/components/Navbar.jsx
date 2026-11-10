@@ -1,17 +1,27 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Heart, Menu, Search, ShoppingBag, User, X, LogOut, Package, MapPin, LayoutDashboard } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { cx } from '../utils/format';
 
+/* Category-free nav — the header only links to shop views, never to
+   individual dress types or Men/Women/Kids departments. */
 const NAV = [
-  { to: '/shop?gender=men',        label: 'Men' },
-  { to: '/shop?gender=women',      label: 'Women' },
-  { to: '/shop?gender=kids',       label: 'Kids' },
-  { to: '/shop?sort=newest',       label: 'New Arrivals' },
-  { to: '/shop?sort=popularity',   label: 'Best Sellers' },
+  { to: '/shop',             label: 'Shop' },
+  { to: '/shop?sort=newest', label: 'New Arrivals' },
+  { to: '/shop?sort=popularity', label: 'Best Sellers' },
 ];
+
+/** Highlight a nav item when the current URL satisfies its query string. */
+const isCurrent = (to, location) => {
+  const [path, qs = ''] = to.split('?');
+  if (location.pathname !== path) return false;
+  if (!qs) return location.search === '';
+  const want = new URLSearchParams(qs);
+  const have = new URLSearchParams(location.search);
+  return [...want.entries()].every(([k, v]) => have.get(k) === v);
+};
 
 export default function Navbar() {
   const { cart } = useCart();
@@ -70,48 +80,59 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop nav links */}
-          <nav className="ml-8 hidden items-center gap-1 lg:flex">
+          <nav className="ml-6 hidden items-center gap-1 lg:flex">
             {NAV.map((item) => (
-              <NavLink
+              <Link
                 key={item.label}
                 to={item.to}
-                className={({ isActive }) =>
-                  cx(
-                    'rounded-lg px-3 py-2 text-sm font-medium transition',
-                    isActive && location.search === `?${item.to.split('?')[1]}`
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-ink-600 hover:bg-ink-50 hover:text-ink-900'
-                  )
-                }
+                className={cx(
+                  'rounded-lg px-3 py-2 text-sm font-medium transition',
+                  isCurrent(item.to, location)
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-ink-600 hover:bg-ink-50 hover:text-ink-900'
+                )}
               >
                 {item.label}
-              </NavLink>
+              </Link>
             ))}
           </nav>
 
           {/* Right icons */}
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-            {/* desktop search */}
-            <form onSubmit={submitSearch} className="hidden items-center md:flex">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-                <input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search products…"
-                  aria-label="Search products"
-                  className="w-48 rounded-lg border border-ink-200 bg-ink-50 py-1.5 pl-9 pr-3 text-sm placeholder-ink-400 transition focus:w-64 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
-                />
-              </div>
+          <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
+            {/* desktop search — single calm pill, no borders-on-borders */}
+            <form onSubmit={submitSearch} className="relative hidden md:block">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => e.key === 'Escape' && setQ('')}
+                placeholder="Search"
+                aria-label="Search products"
+                className="h-9 w-44 rounded-full border border-transparent bg-ink-100 pl-9 pr-8 text-sm text-ink-800 placeholder-ink-500 transition-all duration-200 focus:w-72 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+              />
+              {q ? (
+                <button
+                  type="button"
+                  onClick={() => setQ('')}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-400 transition hover:bg-ink-200 hover:text-ink-700"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
             </form>
 
             {/* mobile search toggle */}
             <button
-              className="rounded-lg p-2 text-ink-600 transition hover:bg-ink-100 md:hidden"
+              className={cx(
+                'rounded-lg p-2 transition md:hidden',
+                searchOpen ? 'bg-ink-100 text-ink-900' : 'text-ink-600 hover:bg-ink-100'
+              )}
               onClick={() => setSearchOpen((s) => !s)}
-              aria-label="Search"
+              aria-label={searchOpen ? 'Close search' : 'Search'}
+              aria-expanded={searchOpen}
             >
-              <Search className="h-5 w-5" />
+              {searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
             </button>
 
             {/* Wishlist */}
@@ -170,16 +191,28 @@ export default function Navbar() {
 
         {/* mobile search bar */}
         {searchOpen && (
-          <form onSubmit={submitSearch} className="border-t border-ink-100 px-4 py-2.5 md:hidden">
+          <form onSubmit={submitSearch} className="border-t border-ink-100 bg-white px-4 py-3 md:hidden">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
               <input
                 autoFocus
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search products…"
-                className="field py-2.5 pl-9"
+                onKeyDown={(e) => e.key === 'Escape' && setSearchOpen(false)}
+                placeholder="Search for products…"
+                aria-label="Search products"
+                className="h-11 w-full rounded-full border border-ink-200 bg-ink-50 pl-11 pr-10 text-sm text-ink-800 placeholder-ink-500 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
               />
+              {q && (
+                <button
+                  type="button"
+                  onClick={() => setQ('')}
+                  aria-label="Clear search"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-400 hover:bg-ink-200 hover:text-ink-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </form>
         )}
@@ -203,7 +236,7 @@ export default function Navbar() {
             </div>
 
             <nav className="flex-1 overflow-y-auto px-3 py-4">
-              <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-ink-400">Shop</p>
+              <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-ink-400">Browse</p>
               {NAV.map((item) => (
                 <Link
                   key={item.label}

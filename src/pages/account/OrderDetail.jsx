@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Check, Package, Truck, Home, XCircle } from 'lucide-react';
+import { Check, Package, Truck, Home, XCircle, ExternalLink } from 'lucide-react';
 import { PageLoader, ErrorNote } from '../../components/Feedback';
 import LazyImage from '../../components/LazyImage';
 import api, { errMsg } from '../../api/client';
@@ -105,6 +105,48 @@ export default function OrderDetail() {
           </ul>
         )}
       </section>
+
+      {/* ---------------------------------------------------- shipment tracking */}
+      {order.shipment?.trackingNumber && (
+        <section className="card border-blue-200 bg-blue-50/30 p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white shadow-sm">
+                <Truck className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700">Shipment Details</span>
+                  {order.shipment.shippedAt && (
+                    <span className="text-[11px] text-ink-400">· Shipped {formatDate(order.shipment.shippedAt)}</span>
+                  )}
+                </div>
+                <h3 className="mt-0.5 text-base font-bold text-ink-900">
+                  {order.shipment.courier || 'Courier Delivery'}
+                </h3>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="text-xs text-ink-500">AWB / Tracking:</span>
+                  <code className="rounded-md bg-white px-2 py-0.5 font-mono text-xs font-bold text-ink-800 border border-ink-200 select-all">
+                    {order.shipment.trackingNumber}
+                  </code>
+                </div>
+              </div>
+            </div>
+
+            {order.shipment.trackingUrl && (
+              <a
+                href={order.shipment.trackingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-xs shadow-sm hover:shadow"
+              >
+                <span>Track on {order.shipment.courier || 'Courier'}</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* ---------------------------------------------------- items */}

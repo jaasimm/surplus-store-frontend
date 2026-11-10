@@ -23,7 +23,7 @@ const PRICE_BANDS = [
   { label: '₹2000 & above', min: 2000, max: 100000 },
 ];
 
-export default function Shop() {
+export default function Shop({ embedded = false }) {
   const [params, setParams] = useSearchParams();
   const [data, setData] = useState({ items: [], pagination: { page: 1, pages: 0, total: 0, limit: 12 } });
   const [categories, setCategories] = useState([]);
@@ -231,26 +231,32 @@ export default function Shop() {
     </div>
   );
 
+  const Heading = embedded ? 'h2' : 'h1';
+
   return (
     <>
-      <SEO
-        title={active.search ? `Search: ${active.search}` : 'Shop'}
-        description="Browse the full Surplus Store catalogue — filter by category, size, colour and price, and sort by newest, popularity or price."
-        path={`/shop${params.toString() ? `?${params}` : ''}`}
-      />
+      {!embedded && (
+        <SEO
+          title={active.search ? `Search: ${active.search}` : 'Shop'}
+          description="Browse the full Surplus Store catalogue — filter by category, size, colour and price, and sort by newest, popularity or price."
+          path={`/shop${params.toString() ? `?${params}` : ''}`}
+        />
+      )}
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* breadcrumb */}
-        <nav className="mb-4 text-xs text-ink-400">
-          <Link to="/" className="hover:text-ink-700">Home</Link> / <span className="text-ink-700">Shop</span>
-          {active.gender && ` / ${active.gender[0].toUpperCase()}${active.gender.slice(1)}`}
-        </nav>
+        {/* breadcrumb (the embedded catalogue on the home page has its own header) */}
+        {!embedded && (
+          <nav className="mb-4 text-xs text-ink-400">
+            <Link to="/" className="hover:text-ink-700">Home</Link> / <span className="text-ink-700">Shop</span>
+            {active.gender && ` / ${active.gender[0].toUpperCase()}${active.gender.slice(1)}`}
+          </nav>
+        )}
 
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="font-display text-2xl font-bold sm:text-3xl">
+            <Heading className="font-display text-2xl font-bold sm:text-3xl">
               {active.search ? `Results for “${active.search}”` : active.gender ? `${active.gender[0].toUpperCase()}${active.gender.slice(1)}’s Collection` : 'All products'}
-            </h1>
+            </Heading>
             <p className="mt-1 text-sm text-ink-500">
               {loading ? 'Loading…' : `${data.pagination.total} product${data.pagination.total === 1 ? '' : 's'}`}
             </p>

@@ -41,9 +41,20 @@ export default function Checkout() {
   /* login is required to reach checkout — requested from the cart / nav */
   useEffect(() => {
     if (!booting && !isAuthenticated) {
-      requireLogin('Login to complete your order — we never store passwords, only an OTP', () => navigate(0));
+      // After a successful OTP login the AuthContext updates `user` automatically
+      // (verifyOtp calls setUser). We do NOT use navigate(0) here because a full
+      // page reload on mobile can race with cookie propagation and re-trigger
+      // this effect before the session is stable, creating an infinite login loop.
+      requireLogin(
+        'Login to complete your order — we never store passwords, only an OTP',
+        async () => {
+          // verifyOtp already set the user in AuthContext. Just sync the cart
+          // so the merged guest items appear.
+          await refresh();
+        }
+      );
     }
-  }, [booting, isAuthenticated, requireLogin, navigate]);
+  }, [booting, isAuthenticated, requireLogin, refresh]);
 
   useEffect(() => {
     if (user?.addresses) {
@@ -124,10 +135,10 @@ export default function Checkout() {
     async (order, payload) => {
       const attempt = () =>
         api.post('/orders/verify-payment', {
-          orderId: order.id,
+          orderId: order.id || order._id,
           razorpayOrderId: payload.razorpay_order_id || payload.orderId,
           razorpayPaymentId: payload.razorpay_payment_id || payload.paymentId,
-          signature: payload.signature || payload.sig,
+          signature: payload.razorpay_signature || payload.signature || payload.sig,
         });
 
       let response;
@@ -170,7 +181,6 @@ export default function Checkout() {
             currency: rzp.currency,
             name: 'Surplus Store',
             description: `Order ${order.orderNumber}`,
-            image: '/favicon.ico',
             prefill: rzp.prefill || {},
             theme: { color: '#1c1d1a' },
             handler: async (response) => {
@@ -189,7 +199,13 @@ export default function Checkout() {
               },
             },
           };
-          new window.Razorpay(options).open();
+          const rzpInstance = new window.Razorpay(options);
+          rzpInstance.on('payment.failed', (resp) => {
+            const reason = resp.error?.description || resp.error?.reason || 'Payment failed';
+            setError(reason);
+            toast.error(reason);
+          });
+          rzpInstance.open();
         } catch (err) {
           setError(errMsg(err));
         }

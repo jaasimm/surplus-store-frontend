@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { cx } from '../utils/format';
+import { resolveImgSrc } from '../utils/img';
 
 /** Inline placeholder used when an image fails to load. */
 const fallback = (label = 'Surplus Store') => {
@@ -18,16 +19,18 @@ const fallback = (label = 'Surplus Store') => {
  * Responsive, lazy-loaded image with a shimmer placeholder and graceful fallback.
  * `ratio` accepts any Tailwind aspect class (default 4/5 — apparel portrait).
  */
-export default function LazyImage({ src, alt = '', ratio = 'aspect-[4/5]', className = '', sizes, label }) {
+export default function LazyImage({ src, alt = '', ratio = 'aspect-[4/5]', className = '', sizes, label, eager = false }) {
   const [state, setState] = useState('loading'); // loading | loaded | error
 
   return (
     <div className={cx('relative overflow-hidden bg-ink-100', ratio, className)}>
       {state === 'loading' && <div className="absolute inset-0 skeleton" aria-hidden="true" />}
       <img
-        src={state === 'error' ? fallback(label || alt?.slice(0, 18)) : src}
+        src={state === 'error' ? fallback(label || alt?.slice(0, 18)) : resolveImgSrc(src)}
         alt={alt}
-        loading="lazy"
+        // `eager` for content inside animated strips: a transformed element can
+        // sit outside the lazy-load distance heuristic and never trigger.
+        loading={eager ? 'eager' : 'lazy'}
         decoding="async"
         sizes={sizes}
         onLoad={() => setState('loaded')}

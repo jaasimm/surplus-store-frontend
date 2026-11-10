@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, ChevronDown, ChevronLeft, ChevronRight, Check, X } from 'lucide-react';
+import { Search, ChevronDown, ChevronLeft, ChevronRight, Check, X, Truck, ExternalLink } from 'lucide-react';
 import { PageLoader, ErrorNote } from '../../components/Feedback';
 import api, { errMsg } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
@@ -47,6 +47,19 @@ export default function Orders() {
       const { data } = await api.patch(`/admin/orders/${order._id}/status`, { status: next });
       setData((d) => ({ ...d, items: d.items.map((o) => (o._id === order._id ? data.data : o)) }));
       toast.success(data.message);
+    } catch (err) {
+      toast.error(errMsg(err));
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const updateShipment = async (order, shipmentData) => {
+    setBusy(order._id);
+    try {
+      const { data } = await api.patch(`/admin/orders/${order._id}/status`, { shipment: shipmentData });
+      setData((d) => ({ ...d, items: d.items.map((o) => (o._id === order._id ? data.data : o)) }));
+      toast.success('Tracking details updated');
     } catch (err) {
       toast.error(errMsg(err));
     } finally {
@@ -174,6 +187,12 @@ export default function Orders() {
                         Marking delivered confirms COD payment. Cancelling restores stock.
                       </p>
 
+                      <ShipmentTrackingForm
+                        order={o}
+                        busy={busy === o._id}
+                        onSave={(shipmentData) => updateShipment(o, shipmentData)}
+                      />
+
                       {o.returnRequest?.requested && (
                         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
                           <p className="text-xs font-bold text-amber-800">Return requested</p>
@@ -206,5 +225,144 @@ export default function Orders() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Form for managing courier and live tracking links for an order. */
+function ShipmentTrackingForm({ order, onSave, busy }) {
+  const [courier, setCourier] = useState(order.shipment?.courier || '');
+  const [trackingNumber, setTrackingNumber] = useState(order.shipment?.trackingNumber || '');
+  const [trackingUrl, setTrackingUrl] = useState(order.shipment?.trackingUrl || '');
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    setCourier(order.shipment?.courier || '');
+    setTrackingNumber(order.shipment?.trackingNumber || '');
+    setTrackingUrl(order.shipment?.trackingUrl || '');
+    setDirty(false);
+  }, [order.shipment]);
+
+  const autoGenerateUrl = (cName, awb) => {
+    const c = (cName || '').toLowerCase().trim();
+    const cleanAwb = (awb || '').trim();
+    if (!cleanAwb) return '';
+    if (c.includes('delhivery')) return `https://www.delhivery.com/track/package/${cleanAwb}`;
+    if (c.includes('shiprocket')) return `https://shiprocket.co/tracking/${cleanAwb}`;
+    if (c.includes('bluedart') || c.includes('blue dart')) return `https://www.bluedart.com/tracking?trackFor=0&trackNo=${cleanAwb}`;
+    if (c.includes('dtdc')) return `https://www.dtdc.in/tracking/tracking_results.asp?Ttype=awb_no&strCNNo=${cleanAwb}`;
+    if (c.includes('post') || c.includes('speed')) return `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx`;
+    return '';
+  };
+
+  const handleCourierChange = (val) => {
+    setCourier(val);
+    setDirty(true);
+    if (!trackingUrl || trackingUrl.includes('delhivery') || trackingUrl.includes('shiprocket') || trackingUrl.includes('bluedart')) {
+      const suggested = autoGenerateUrl(val, trackingNumber);
+      if (suggested) setTrackingUrl(suggested);
+    }
+  };
+
+  const handleAwbChange = (val) => {
+    setTrackingNumber(val);
+    setDirty(true);
+    if (!trackingUrl || trackingUrl.includes('delhivery') || trackingUrl.includes('shiprocket') || trackingUrl.includes('bluedart')) {
+      const suggested = autoGenerateUrl(courier, val);
+      if (suggested) setTrackingUrl(suggested);
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave({ courier, trackingNumber, trackingUrl });
+    setDirty(false);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-4 rounded-2xl border border-ink-200 bg-sand-50/70 p-3.5 space-y-2.5">
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-ink-700">
+          <Truck className="h-3.5 w-3.5 text-blue-600" /> Courier & Tracking
+        </span>
+        {order.shipment?.trackingNumber ? (
+          <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+            Active
+          </span>
+        ) : (
+          <span className="text-[10px] text-ink-400">Not assigned</span>
+        )}
+      </div>
+
+      <div>
+        <label className="text-[11px] font-medium text-ink-600">Courier Partner</label>
+        <input
+          type="text"
+          list={`couriers-${order._id}`}
+          value={courier}
+          onChange={(e) => handleCourierChange(e.target.value)}
+          placeholder="e.g. Delhivery, BlueDart, Shiprocket"
+          className="field mt-1 py-1.5 text-xs bg-white"
+        />
+        <datalist id={`couriers-${order._id}`}>
+          <option value="Delhivery" />
+          <option value="Shiprocket" />
+          <option value="Blue Dart" />
+          <option value="DTDC" />
+          <option value="India Post (Speed Post)" />
+          <option value="Shadowfax" />
+          <option value="Xpressbees" />
+        </datalist>
+      </div>
+
+      <div>
+        <label className="text-[11px] font-medium text-ink-600">AWB / Tracking Number</label>
+        <input
+          type="text"
+          value={trackingNumber}
+          onChange={(e) => handleAwbChange(e.target.value)}
+          placeholder="e.g. 143256789012"
+          className="field mt-1 py-1.5 text-xs bg-white font-mono"
+        />
+      </div>
+
+      <div>
+        <label className="text-[11px] font-medium text-ink-600">Tracking Link</label>
+        <div className="flex gap-1.5 mt-1">
+          <input
+            type="url"
+            value={trackingUrl}
+            onChange={(e) => { setTrackingUrl(e.target.value); setDirty(true); }}
+            placeholder="https://..."
+            className="field py-1.5 text-xs bg-white"
+          />
+          {trackingUrl && (
+            <a
+              href={trackingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-outline px-2 py-1 text-xs shrink-0 inline-flex items-center"
+              title="Test tracking link"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
+        </div>
+      </div>
+
+      <div className="pt-1 flex items-center justify-between">
+        <button
+          type="submit"
+          disabled={busy || !dirty}
+          className="btn-primary py-1.5 px-3 text-xs"
+        >
+          {busy ? 'Saving…' : 'Save tracking'}
+        </button>
+        {order.shipment?.shippedAt && (
+          <span className="text-[10px] text-ink-400">
+            Shipped on {formatDate(order.shipment.shippedAt)}
+          </span>
+        )}
+      </div>
+    </form>
   );
 }

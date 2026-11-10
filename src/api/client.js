@@ -70,6 +70,17 @@ api.interceptors.request.use(async (config) => {
     csrf = await ensureCsrf();
   }
 
+  // Never reuse a cached GET response: a stale /auth/me served from the
+  // browser cache is what makes the login state look "stuck" after a
+  // login/logout in the same browser.
+  if (['get', 'head'].includes(method)) {
+    config.headers['Cache-Control'] = 'no-cache, no-store';
+    config.headers['Pragma'] = 'no-cache';
+    if (String(config.url || '').includes('/auth/')) {
+      config.params = { ...config.params, _ts: Date.now() }; // bust any proxy cache too
+    }
+  }
+
   if (csrf) config.headers['X-CSRF-Token'] = csrf;
   config.headers['X-Guest-ID'] = getGuestId();
   return config;
@@ -84,12 +95,21 @@ api.interceptors.response.use(
     // Only attempt a silent refresh when a refresh cookie can actually exist.
     if (error.response?.status === 401 && !original._retried && !isAuthRoute && refreshPossible) {
       original._retried = true;
-      refreshing = refreshing || api.post('/auth/refresh').catch(() => null);
-      const result = await refreshing;
+      // Keep the rejection so we can tell "the server said no" apart from
+      // "the network died" — only the former means the session is gone.
+      refreshing =
+        refreshing ||
+        api.post('/auth/refresh').then(
+          (res) => ({ ok: true, res }),
+          (err) => ({ ok: false, err })
+        );
+      const outcome = await refreshing;
       refreshing = null;
-      if (result?.data?.success) return api(original);
-      // The refresh cookie is gone too — we are definitely a guest now.
-      setRefreshPossible(false);
+      if (outcome.ok && outcome.res?.data?.success) return api(original);
+      // A real answer from the server (401/403/5xx) tells us the refresh
+      // cookie is unusable. A network blip — very common when a mobile tab
+      // resumes from the background — must NOT lock us out of retrying later.
+      if (!outcome.ok && outcome.err?.response) setRefreshPossible(false);
     }
     return Promise.reject(error);
   }
@@ -97,8 +117,14 @@ api.interceptors.response.use(
 
 /**
  * Guarantee a valid access token before a critical call (place order, verify
- * payment). Returns true when a session exists afterwards — callers should
- * prompt for login when it returns false instead of hitting a raw 401.
+ * payment). Returns true when a session should still exist — callers prompt
+ * for login only when it returns FALSE.
+ *
+ * "False" is reserved for a DEFINITIVE answer from the server (no cookies at
+ * all, or the refresh cookie was rejected). When we simply cannot reach the
+ * server — flaky mobile network, tab resuming from the background — we return
+ * true so the caller retries the real request instead of throwing a login
+ * modal at someone who is still signed in.
  */
 export async function ensureFreshSession() {
   try {
@@ -106,18 +132,25 @@ export async function ensureFreshSession() {
     const session = data?.data || {};
     setRefreshPossible(Boolean(session.user || session.canRefresh));
     if (session.user) return true;
-    if (!session.canRefresh) return false;
+    if (!session.canRefresh) return false; // definitive: no session cookies
 
-    const refreshed = await api.post('/auth/refresh');
-    if (refreshed?.data?.success) {
-      setRefreshPossible(true);
-      return true;
+    try {
+      const refreshed = await api.post('/auth/refresh');
+      if (refreshed?.data?.success) {
+        setRefreshPossible(true);
+        return true;
+      }
+    } catch (err) {
+      if (!err?.response) return true; // network blip → assume still signed in
+      setRefreshPossible(false); // server rejected the refresh cookie
+      return false;
     }
+    setRefreshPossible(false);
+    return false;
   } catch {
-    /* fall through → treat as logged out */
+    /* could not reach the server → never claim "logged out" */
+    return true;
   }
-  setRefreshPossible(false);
-  return false;
 }
 
 /** Extract a friendly message from any API error. */

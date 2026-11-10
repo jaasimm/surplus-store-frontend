@@ -90,3 +90,45 @@
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
 }
 
+/* ── Endless strip (garment types) ─────────────────────────────────────────
+   The track holds four identical `.marquee-group` copies. Translating it by
+   -50% (= two whole groups) loops seamlessly with no jump, and the extra
+   copies guarantee the strip still fills the viewport on very wide screens.
+   Items travel left → right. */
+.marquee { position: relative; overflow: hidden; }
+.marquee-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: marquee-ltr 90s linear infinite;
+}
+.marquee-group {
+  display: flex;
+  flex-shrink: 0;
+  gap: 1rem;
+  padding-right: 1rem;
+}
+.marquee:hover .marquee-track,
+.marquee:focus-within .marquee-track { animation-play-state: paused; }
+
+@keyframes marquee-ltr {
+  from { transform: translate3d(-50%, 0, 0); }
+  to   { transform: translate3d(0, 0, 0); }
+}
+
+/* ── Product IMAGE marquee ────────────────────────────────────────────────
+   Same seamless 4-copy track, but travelling right → left (the natural
+   reading direction for a shopping wall) and paced by content width.
+   `.is-reverse` sends the second row the other way. */
+.product-marquee .marquee-track { animation: marquee-rtl 90s linear infinite; }
+.product-marquee.is-reverse .marquee-track { animation: marquee-ltr 120s linear infinite; }
+
+@keyframes marquee-rtl {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+}
+
