@@ -7,6 +7,54 @@ import api, { errMsg } from '../api/client';
 import { cx } from '../utils/format';
 
 const EMPTY = { name: '', email: '', mobile: '', subject: 'General', message: '' };
+const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
+
+/**
+ * Forward the message to the store owner's inbox through Web3Forms.
+ *
+ * This deliberately runs in the browser: Web3Forms' free plan only accepts
+ * submissions from the client side (server-to-server calls return 403). The
+ * access key is public by design — it is an alias for our inbox, not a secret.
+ *
+ * The message is also POSTed to our API so it lands in admin → Messages.
+ * A failure here is only logged: it must never fail the visitor's submission.
+ */
+async function sendEmailNotification(payload) {
+  const access_key = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY;
+  if (!access_key) return { skipped: 'VITE_WEB3FORMS_ACCESS_KEY not set' };
+
+  const body = {
+    access_key,
+    // `subject` is reserved by Web3Forms: it becomes the notification's subject.
+    subject: `[${payload.subject}] ${payload.name} — surplusstore.in`,
+    from_name: payload.name,
+    name: payload.name,
+    mobile: payload.mobile,
+    message: payload.message,
+  };
+  if (payload.email) {
+    body.email = payload.email;
+    body.replyto = payload.email; // so "Reply" reaches the visitor
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(WEB3FORMS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.success) {
+      throw new Error(data?.message || `Web3Forms responded ${res.status}`);
+    }
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export default function Contact() {
   const [form, setForm] = useState(EMPTY);
@@ -31,12 +79,27 @@ export default function Contact() {
     if (!validate()) return;
     setSending(true);
     try {
-      const { data } = await api.post('/contact', form);
-      toast.success(data.message);
-      setForm(EMPTY);
-      setDone(true);
-    } catch (err) {
-      setError(errMsg(err));
+      // Save to the database (admin → Messages) and e-mail the owner in
+      // parallel. Only the save decides success — the visitor never sees an
+      // e-mail hiccup, and the message is always retrievable from the admin.
+      const [saved, emailed] = await Promise.allSettled([
+        api.post('/contact', form),
+        sendEmailNotification(form),
+      ]);
+
+      if (saved.status === 'rejected') {
+        setError(errMsg(saved.reason));
+      } else {
+        toast.success(saved.value.data.message);
+        setForm(EMPTY);
+        setDone(true);
+      }
+
+      if (emailed.status === 'rejected') {
+        console.warn('[contact] e-mail notification failed:', emailed.reason?.message || emailed.reason);
+      } else if (emailed.value?.skipped) {
+        console.warn('[contact] e-mail skipped:', emailed.value.skipped);
+      }
     } finally {
       setSending(false);
     }

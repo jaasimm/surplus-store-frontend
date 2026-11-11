@@ -28,3 +28,17 @@ The app runs at `http://localhost:5173` and proxies `/api` and `/uploads` reques
 npm run build
 ```
 Build output is generated in the `dist/` directory.
+
+### Environment variables (set these on Netlify)
+`VITE_*` values are **baked in at build time** — changing one requires a new
+build (use "Clear cache and re-deploy").
+
+| Variable | Purpose |
+|---|---|
+| `VITE_API_URL` | API origin, e.g. `https://surplus-store-backend.onrender.com/api` |
+| `VITE_FIREBASE_API_KEY` | Firebase phone-OTP login (starts with `AIzaSy`) |
+| `VITE_WEB3FORMS_ACCESS_KEY` | Contact-form e-mail delivery (https://web3forms.com) |
+
+The Web3Forms key is public by design — the free plan only accepts
+submissions made from the browser, so it must ship to the client. It can only
+be used to send messages to the store's inbox.
