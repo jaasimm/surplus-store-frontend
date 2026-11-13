@@ -255,7 +255,7 @@ export default function Shop({ embedded = false }) {
         <div className="flex items-end justify-between gap-4">
           <div>
             <Heading className="font-display text-2xl font-bold sm:text-3xl">
-              {active.search ? `Results for “${active.search}”` : active.gender ? `${active.gender[0].toUpperCase()}${active.gender.slice(1)}’s Collection` : 'All products'}
+              {active.search ? `Results for “${active.search}”` : active.gender ? `${active.gender[0].toUpperCase()}${active.gender.slice(1)}’s Collection` : ''}
             </Heading>
             <p className="mt-1 text-sm text-ink-500">
               {loading ? 'Loading…' : `${data.pagination.total} product${data.pagination.total === 1 ? '' : 's'}`}

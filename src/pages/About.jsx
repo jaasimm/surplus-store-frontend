@@ -16,7 +16,7 @@ export default function About() {
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
         <h1 className="font-display text-3xl font-bold sm:text-4xl">Our story</h1>
         <p className="mt-4 text-lg leading-relaxed text-ink-600">
-          Surplus Store started with a simple observation: perfectly good clothes were being destroyed because brands
+          Surpluuuuuus Store started with a simple observation: perfectly good clothes were being destroyed because brands
           ordered more than they sold. We buy that surplus directly from manufacturers, inspect every piece, and pass
           the savings on to you.
         </p>
