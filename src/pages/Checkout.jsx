@@ -15,7 +15,7 @@ const EMPTY_FORM = { name: '', phone: '', pincode: '', line1: '', line2: '', cit
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { cart, refresh } = useCart();
+  const { cart, loading: cartLoading, refresh } = useCart();
   const { user, isAuthenticated, booting, requireLogin } = useAuth();
   const toast = useToast();
 
@@ -69,8 +69,10 @@ export default function Checkout() {
 
   /* an empty bag has nothing to check out */
   useEffect(() => {
-    if (!placing && !pending && !booting && cart.items.length === 0) navigate('/cart', { replace: true });
-  }, [cart.items.length, placing, pending, booting, navigate]);
+    if (!placing && !pending && !booting && !cartLoading && cart.items.length === 0) {
+      navigate('/cart', { replace: true });
+    }
+  }, [cart.items.length, cartLoading, placing, pending, booting, navigate]);
 
   /* ------------------------------------------------------------ coupon */
   const applyCoupon = async (e) => {
@@ -318,7 +320,7 @@ export default function Checkout() {
   };
 
   /* ------------------------------------------------------------ render */
-  if (booting || !isAuthenticated) return <PageLoader label="Preparing checkout…" />;
+  if (booting || cartLoading || !isAuthenticated) return <PageLoader label="Preparing checkout…" />;
 
   const shipping = cart.itemsPrice >= 999 || cart.itemsPrice === 0 ? 0 : 79;
   const grandTotal = Math.max(0, cart.itemsPrice - (coupon?.discount || 0)) + shipping;
