@@ -63,6 +63,10 @@ export default function Checkout() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (showForm) document.getElementById('addr-name')?.focus();
+  }, [showForm]);
+
   /* an empty bag has nothing to check out */
   useEffect(() => {
     if (!placing && !pending && !booting && cart.items.length === 0) navigate('/cart', { replace: true });
@@ -96,6 +100,18 @@ export default function Checkout() {
     if (form.city.trim().length < 2) errs.city = 'Enter city';
     if (form.state.trim().length < 2) errs.state = 'Enter state';
     setFormErrors(errs);
+    const firstInvalidField = Object.keys(errs)[0];
+    if (firstInvalidField) {
+      const fieldIds = {
+        name: 'addr-name',
+        phone: 'addr-phone',
+        pincode: 'addr-pin',
+        line1: 'addr-line1',
+        city: 'addr-city',
+        state: 'addr-state',
+      };
+      document.getElementById(fieldIds[firstInvalidField])?.focus();
+    }
     return Object.keys(errs).length === 0;
   };
 
@@ -220,7 +236,8 @@ export default function Checkout() {
   const placeOrder = async () => {
     setError('');
     if (!selectedId && !showForm) {
-      setError('Please select or add a delivery address');
+      setError('Please add or select a delivery address');
+      setShowForm(true);
       return;
     }
     if (showForm && !validateForm()) return;
@@ -371,23 +388,23 @@ export default function Checkout() {
                 <form onSubmit={saveAddress} className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
                     <label className="label" htmlFor="addr-name">Full name</label>
-                    <input id="addr-name" className={cx('field', formErrors.name && 'field-error')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Priya Sharma" />
-                    {formErrors.name && <p className="mt-1 text-xs text-red-600">{formErrors.name}</p>}
+                    <input id="addr-name" aria-invalid={Boolean(formErrors.name)} aria-describedby={formErrors.name ? 'addr-name-error' : undefined} className={cx('field scroll-mt-28', formErrors.name && 'field-error')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Priya Sharma" />
+                    {formErrors.name && <p id="addr-name-error" className="mt-1 text-xs text-red-600">{formErrors.name}</p>}
                   </div>
                   <div>
                     <label className="label" htmlFor="addr-phone">Mobile number</label>
-                    <input id="addr-phone" inputMode="numeric" className={cx('field', formErrors.phone && 'field-error')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} placeholder="98765 43210" />
-                    {formErrors.phone && <p className="mt-1 text-xs text-red-600">{formErrors.phone}</p>}
+                    <input id="addr-phone" inputMode="numeric" aria-invalid={Boolean(formErrors.phone)} aria-describedby={formErrors.phone ? 'addr-phone-error' : undefined} className={cx('field scroll-mt-28', formErrors.phone && 'field-error')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} placeholder="98765 43210" />
+                    {formErrors.phone && <p id="addr-phone-error" className="mt-1 text-xs text-red-600">{formErrors.phone}</p>}
                   </div>
                   <div>
                     <label className="label" htmlFor="addr-pin">Pincode</label>
-                    <input id="addr-pin" inputMode="numeric" className={cx('field', formErrors.pincode && 'field-error')} value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })} placeholder="400001" />
-                    {formErrors.pincode && <p className="mt-1 text-xs text-red-600">{formErrors.pincode}</p>}
+                    <input id="addr-pin" inputMode="numeric" aria-invalid={Boolean(formErrors.pincode)} aria-describedby={formErrors.pincode ? 'addr-pin-error' : undefined} className={cx('field scroll-mt-28', formErrors.pincode && 'field-error')} value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })} placeholder="400001" />
+                    {formErrors.pincode && <p id="addr-pin-error" className="mt-1 text-xs text-red-600">{formErrors.pincode}</p>}
                   </div>
                   <div className="sm:col-span-2">
                     <label className="label" htmlFor="addr-line1">House no., building, street</label>
-                    <input id="addr-line1" className={cx('field', formErrors.line1 && 'field-error')} value={form.line1} onChange={(e) => setForm({ ...form, line1: e.target.value })} placeholder="B-402, Sunrise Apartments" />
-                    {formErrors.line1 && <p className="mt-1 text-xs text-red-600">{formErrors.line1}</p>}
+                    <input id="addr-line1" aria-invalid={Boolean(formErrors.line1)} aria-describedby={formErrors.line1 ? 'addr-line1-error' : undefined} className={cx('field scroll-mt-28', formErrors.line1 && 'field-error')} value={form.line1} onChange={(e) => setForm({ ...form, line1: e.target.value })} placeholder="B-402, Sunrise Apartments" />
+                    {formErrors.line1 && <p id="addr-line1-error" className="mt-1 text-xs text-red-600">{formErrors.line1}</p>}
                   </div>
                   <div className="sm:col-span-2">
                     <label className="label" htmlFor="addr-line2">Area, landmark (optional)</label>
@@ -395,13 +412,13 @@ export default function Checkout() {
                   </div>
                   <div>
                     <label className="label" htmlFor="addr-city">City</label>
-                    <input id="addr-city" className={cx('field', formErrors.city && 'field-error')} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Mumbai" />
-                    {formErrors.city && <p className="mt-1 text-xs text-red-600">{formErrors.city}</p>}
+                    <input id="addr-city" aria-invalid={Boolean(formErrors.city)} aria-describedby={formErrors.city ? 'addr-city-error' : undefined} className={cx('field scroll-mt-28', formErrors.city && 'field-error')} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Mumbai" />
+                    {formErrors.city && <p id="addr-city-error" className="mt-1 text-xs text-red-600">{formErrors.city}</p>}
                   </div>
                   <div>
                     <label className="label" htmlFor="addr-state">State</label>
-                    <input id="addr-state" className={cx('field', formErrors.state && 'field-error')} value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="Maharashtra" />
-                    {formErrors.state && <p className="mt-1 text-xs text-red-600">{formErrors.state}</p>}
+                    <input id="addr-state" aria-invalid={Boolean(formErrors.state)} aria-describedby={formErrors.state ? 'addr-state-error' : undefined} className={cx('field scroll-mt-28', formErrors.state && 'field-error')} value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="Maharashtra" />
+                    {formErrors.state && <p id="addr-state-error" className="mt-1 text-xs text-red-600">{formErrors.state}</p>}
                   </div>
                   <label className="flex items-center gap-2 text-sm sm:col-span-2">
                     <input type="checkbox" checked={form.isDefault} onChange={(e) => setForm({ ...form, isDefault: e.target.checked })} className="h-4 w-4 rounded border-ink-300 text-ink-900 focus:ring-ink-900" />

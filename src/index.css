@@ -10,6 +10,11 @@
   body {
     @apply bg-slate-50 text-ink-900 font-sans antialiased;
   }
+  #root {
+    width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+  }
   ::selection {
     @apply bg-blue-600 text-white;
   }
@@ -131,4 +136,3 @@
 @media (prefers-reduced-motion: reduce) {
   .marquee-track { animation: none; }
 }
-

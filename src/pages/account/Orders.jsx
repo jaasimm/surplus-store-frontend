@@ -80,7 +80,7 @@ export default function Orders() {
         const status = STATUS_META[order.status] || STATUS_META.placed;
         const pay = PAYMENT_META[order.payment.status] || PAYMENT_META.pending;
         return (
-          <article key={order.id} className="card p-5">
+          <article key={order.id} className="card w-full min-w-0 max-w-full p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-bold tabular-nums">{order.orderNumber}</p>
@@ -109,12 +109,12 @@ export default function Orders() {
               ))}
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-4">
+            <div className="mt-4 flex flex-col items-stretch justify-between gap-3 border-t border-ink-100 pt-4 sm:flex-row sm:items-center">
               <p className="text-sm">
                 Total: <b>{inr(order.totalPrice)}</b>
                 {order.discount > 0 && <span className="ml-2 text-xs text-emerald-600">saved {inr(order.discount)}</span>}
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 sm:justify-end">
                 {['placed', 'packed'].includes(order.status) && (
                   <button onClick={() => cancel(order)} disabled={busy === order.id} className="btn-outline py-2 text-xs">
                     Cancel order

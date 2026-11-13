@@ -53,7 +53,7 @@ export default function App() {
       <ScrollManager />
       <Navbar />
 
-      <main className="min-h-[70vh]">
+      <main className="min-h-[70vh] w-full min-w-0">
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* ------------------------------------------------ storefront */}

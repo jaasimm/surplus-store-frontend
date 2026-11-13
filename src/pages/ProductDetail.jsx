@@ -143,7 +143,7 @@ export default function ProductDetail() {
         jsonLd={jsonLd}
       />
 
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 pb-28 sm:px-6 lg:px-8 lg:pb-6">
         {/* breadcrumb */}
         <nav className="mb-4 text-xs text-ink-400">
           <Link to="/" className="hover:text-ink-700">Home</Link> /{' '}
@@ -279,10 +279,10 @@ export default function ProductDetail() {
             {/* quantity + actions */}
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <QuantityStepper value={qty} onChange={setQty} max={Math.min(20, selectedVariant?.stock || 20)} disabled={!selectedVariant} />
-              <button onClick={() => handleAdd(false)} disabled={outOfStock || busyId === product.id} className="btn-outline flex-1 py-3">
+              <button onClick={() => handleAdd(false)} disabled={outOfStock || busyId === product.id} className="btn-outline hidden flex-1 py-3 lg:inline-flex">
                 {busyId === product.id ? <ButtonSpinner /> : (<><ShoppingBag className="h-4 w-4" /> Add to bag</>)}
               </button>
-              <button onClick={() => handleAdd(true)} disabled={outOfStock} className="btn-primary flex-1 py-3">
+              <button onClick={() => handleAdd(true)} disabled={outOfStock || busyId === product.id} className="btn-primary hidden flex-1 py-3 lg:inline-flex">
                 Buy now
               </button>
               <button
@@ -382,6 +382,16 @@ export default function ProductDetail() {
             </div>
           </section>
         )}
+      </div>
+
+      {/* Keep the main product actions reachable while browsing on mobile. */}
+      <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 gap-2 border-t border-ink-100 bg-white/95 p-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
+        <button onClick={() => handleAdd(false)} disabled={outOfStock || busyId === product.id} className="btn-outline min-h-12 w-full px-3 text-sm">
+          {busyId === product.id ? <ButtonSpinner /> : <><ShoppingBag className="h-4 w-4" /> Add to bag</>}
+        </button>
+        <button onClick={() => handleAdd(true)} disabled={outOfStock || busyId === product.id} className="btn-primary min-h-12 w-full px-3 text-sm">
+          Buy now
+        </button>
       </div>
     </>
   );

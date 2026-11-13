@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import api, { errMsg } from '../api/client';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
@@ -16,17 +16,21 @@ export function CartProvider({ children }) {
   const [cart, setCart] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
+  const refreshId = useRef(0);
   const { isAuthenticated } = useAuth();
   const toast = useToast();
 
   const refresh = useCallback(async () => {
+    // A guest-cart request can still be in flight when OTP login merges the
+    // cart. Do not let its late response overwrite the authenticated cart.
+    const requestId = ++refreshId.current;
     try {
       const { data } = await api.get('/cart');
-      setCart(data?.data || EMPTY);
+      if (requestId === refreshId.current) setCart(data?.data || EMPTY);
     } catch {
-      setCart(EMPTY);
+      // A mobile network interruption is not evidence that the cart is empty.
     } finally {
-      setLoading(false);
+      if (requestId === refreshId.current) setLoading(false);
     }
   }, []);
 

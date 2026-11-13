@@ -39,7 +39,7 @@ export default function AccountLayout() {
     <ProtectedRoute>
       <SEO title="My Account" description="Manage your Surplus Store profile, orders and saved addresses." path="/account" noindex />
 
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full min-w-0 max-w-6xl overflow-x-clip px-4 py-8 sm:px-6 lg:px-8">
 
         {/* ── Header ── */}
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-ink-100 pb-6">
@@ -56,7 +56,7 @@ export default function AccountLayout() {
           </button>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[17rem_1fr]">
+        <div className="grid min-w-0 gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
 
           {/* ── Sidebar ── */}
           <aside className="lg:sticky lg:top-28 lg:self-start space-y-3">
@@ -84,7 +84,7 @@ export default function AccountLayout() {
             <div className="rounded-2xl border border-ink-100 bg-white shadow-sm overflow-hidden">
 
               {/* Mobile: horizontal tab strip */}
-              <div className="flex overflow-x-auto no-scrollbar lg:hidden border-b border-ink-100">
+              <div className="sticky top-24 z-30 flex overflow-x-auto no-scrollbar border-b border-ink-100 bg-white lg:hidden">
                 {LINKS.map((l) => (
                   <NavLink
                     key={l.to}
@@ -171,7 +171,7 @@ export default function AccountLayout() {
 
           {/* ── Main content ── */}
           <div className="min-w-0">
-            <Outlet />
+            <div className="min-w-0"><Outlet /></div>
           </div>
         </div>
       </div>
