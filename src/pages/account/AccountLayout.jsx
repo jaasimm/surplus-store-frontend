@@ -56,7 +56,7 @@ export default function AccountLayout() {
           </button>
         </div>
 
-        <div className="grid min-w-0 gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
 
           {/* ── Sidebar ── */}
           <aside className="lg:sticky lg:top-28 lg:self-start space-y-3">
