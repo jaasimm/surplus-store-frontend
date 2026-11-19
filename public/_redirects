@@ -1,2 +1,10 @@
-# Netlify SPA redirect
+# Proxy the API through Netlify so the session cookies are FIRST-PARTY.
+# Calling Render directly from the Netlify site makes them third-party
+# cookies, which iOS Safari / every iOS browser and many Android browsers
+# drop — login "succeeds" but the next request is a guest again.
+# With these rules leave VITE_API_URL unset (client falls back to /api).
+/api/*       https://surplus-store-backend.onrender.com/api/:splat       200
+/uploads/*   https://surplus-store-backend.onrender.com/uploads/:splat   200
+
+# Netlify SPA redirect (must stay last)
 /*    /index.html   200

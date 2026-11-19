@@ -35,7 +35,7 @@ build (use "Clear cache and re-deploy").
 
 | Variable | Purpose |
 |---|---|
-| `VITE_API_URL` | API origin, e.g. `https://surplus-store-backend.onrender.com/api` |
+| `VITE_API_URL` | **Leave unset in production.** `public/_redirects` proxies `/api` and `/uploads` to Render so the login cookies stay first-party (mobile browsers drop third-party cookies). Only set it when the API shares the site's domain. |
 | `VITE_FIREBASE_API_KEY` | Firebase phone-OTP login (starts with `AIzaSy`) |
 | `VITE_WEB3FORMS_ACCESS_KEY` | Contact-form e-mail delivery (https://web3forms.com) |
 
